@@ -1,3 +1,8 @@
+"""
+analyzer.py — Exploratory Data Analysis (EDA) Module
+Auto-generates charts, stats, and insights from any dataset.
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -115,9 +120,9 @@ class Analyzer:
         self._save_fig("missing_values.png")
 
     def _numeric_distributions(self):
-        """Plot histogram + KDE for each numeric column."""
+        drop_cols = {c for c, t in self.column_types.items() if t in ("id", "index")}
         num_cols = [c for c in self.df.select_dtypes(include="number").columns
-                    if c != self.target_col]
+                    if c != self.target_col and c not in drop_cols]
         if not num_cols:
             return
 
@@ -192,30 +197,48 @@ class Analyzer:
         self._save_fig("categorical_distributions.png")
 
     def _correlation_heatmap(self):
-        """Correlation heatmap for all numeric columns."""
-        num_df = self.df.select_dtypes(include="number")
+        drop_cols = [c for c, t in self.column_types.items()
+                     if t in ("id", "index") and c in self.df.columns]
+        num_df = self.df.drop(columns=drop_cols).select_dtypes(include="number")
+
         if num_df.shape[1] < 2:
+            print("\n⚠️  Not enough numeric columns for a correlation heatmap (need ≥ 2).")
+            self.report["top_correlations"] = {}
             return
 
         print(f"\n🔥 Generating correlation heatmap ({num_df.shape[1]} columns)...")
         corr = num_df.corr()
 
-        # Find top correlated pairs (excluding self-correlation)
-        pairs = (corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
-                      .stack()
-                      .sort_values(ascending=False))
+        # Upper triangle only, k=1 skips diagonal (self-correlations)
+        upper_mask = np.triu(np.ones(corr.shape), k=1).astype(bool)
+        pairs = (
+            corr.where(upper_mask)
+                .stack()                     # stack to series
+                .dropna()                    # then explicitly drop NaN — fixes the bug
+                .sort_values(ascending=False)
+        )
+
+        if pairs.empty:
+            print("   No valid correlation pairs found.")
+            self.report["top_correlations"] = {}
+            return
+
         top = pairs.head(5)
-        self.report["top_correlations"] = {str(k): round(v, 4)
-                                            for k, v in top.items()}
+        self.report["top_correlations"] = {
+            str(k): round(float(v), 4)
+            for k, v in top.items()
+            if not np.isnan(v)
+        }
+
         print("   Top correlations:")
         for (c1, c2), val in top.items():
             print(f"   {c1} ↔ {c2}: {val:.3f}")
 
         fig, ax = plt.subplots(figsize=(max(8, num_df.shape[1] * 0.8),
-                                         max(6, num_df.shape[1] * 0.7)))
-        mask = np.triu(np.ones_like(corr, dtype=bool))
+                                        max(6, num_df.shape[1] * 0.7)))
+        plot_mask = np.triu(np.ones_like(corr, dtype=bool))
         cmap = sns.diverging_palette(240, 10, as_cmap=True)
-        sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1, vmin=-1, center=0,
+        sns.heatmap(corr, mask=plot_mask, cmap=cmap, vmax=1, vmin=-1, center=0,
                     annot=True, fmt=".2f", square=True, linewidths=0.5,
                     cbar_kws={"shrink": 0.8}, ax=ax, annot_kws={"size": 8})
         ax.set_title("Feature Correlation Heatmap", fontsize=14, fontweight="bold")
@@ -326,8 +349,10 @@ class Analyzer:
             self._save_fig(f"timeseries_{dt_col}.png")
 
     def _outlier_summary(self):
-        """Detect outliers using IQR method."""
-        num_df = self.df.select_dtypes(include="number")
+        """Detect outliers using IQR method — excludes index/id columns."""
+        drop_cols = {c for c, t in self.column_types.items() if t in ("id", "index")}
+        num_df = self.df.drop(columns=[c for c in drop_cols if c in self.df.columns]
+                              ).select_dtypes(include="number")
         if num_df.empty:
             return
 

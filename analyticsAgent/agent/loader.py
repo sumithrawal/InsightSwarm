@@ -1,4 +1,8 @@
-import imp
+"""
+loader.py — Data Ingestion Module
+Handles CSV and XLSX loading with smart type detection.
+"""
+
 import pandas as pd
 import numpy as np
 import os
@@ -12,7 +16,7 @@ from typing import Optional
 SUPPORTED_FORMATS = [".csv", ".xlsx", ".xls"]
 
 
-def load_file(filepath: str) -> pd.DataFrame:
+def loadFile(filepath: str) -> pd.DataFrame:
     """Load a CSV or XLSX file into a DataFrame."""
     path = Path(filepath)
 
@@ -73,7 +77,7 @@ def _load_xlsx(filepath: str) -> pd.DataFrame:
     return pd.read_excel(filepath, sheet_name=sheets[idx], engine="openpyxl")
 
 
-def detect_column_types(df: pd.DataFrame) -> dict:
+def detectColumnTypes(df: pd.DataFrame) -> dict:
     """
     Auto-detect semantic column types:
       - numeric: int/float columns
@@ -96,13 +100,24 @@ def detect_column_types(df: pd.DataFrame) -> dict:
             types[col] = "categorical"
 
         elif pd.api.types.is_numeric_dtype(series):
-            # Heuristic: if very few unique values relative to rows → treat as categorical
-            if nunique <= 20 and nunique / max(n, 1) < 0.05:
+            # Detect sequential row-index columns (0,1,2,3...) — useless for ML
+            is_sequential = (
+                pd.api.types.is_integer_dtype(series)
+                and nunique == n                           # every value is unique
+                and series.dropna().min() == 0            # starts at 0
+                and series.dropna().max() == n - 1        # ends at n-1
+            )
+            # Also catch columns literally named 'index', 'unnamed: 0', or bare 'id'
+            is_index_name = col.lower() in ("index", "unnamed: 0", "unnamed:0", "id")
+
+            if is_sequential or (is_index_name and nunique / max(n, 1) > 0.9):
+                types[col] = "index"   # row counter — always drop, never model
+            elif nunique <= 20 and nunique / max(n, 1) < 0.05:
                 types[col] = "categorical"
             else:
                 types[col] = "numeric"
 
-        elif pd.api.types.is_object_dtype(series):
+        elif pd.api.types.is_object_dtype(series) or series.dtype.kind == 'O' or str(series.dtype) in ('str', 'string'):
             # Try parsing as datetime
             sample = series.dropna().head(100)
             try:
@@ -125,9 +140,9 @@ def detect_column_types(df: pd.DataFrame) -> dict:
     return types
 
 
-def get_dataset_profile(df: pd.DataFrame, filepath: str) -> dict:
+def getDatasetProfile(df: pd.DataFrame, filepath: str) -> dict:
     """Generate a lightweight dataset profile for memory logging."""
-    col_types = detect_column_types(df)
+    colTypes = detectColumnTypes(df)
 
     # Compute a file hash for change detection
     with open(filepath, "rb") as f:
@@ -140,7 +155,7 @@ def get_dataset_profile(df: pd.DataFrame, filepath: str) -> dict:
         "rows": df.shape[0],
         "columns": df.shape[1],
         "column_names": list(df.columns),
-        "column_types": col_types,
+        "column_types": colTypes,
         "missing_cells": int(df.isnull().sum().sum()),
         "duplicate_rows": int(df.duplicated().sum()),
         "memory_mb": round(df.memory_usage(deep=True).sum() / 1e6, 2),
@@ -149,7 +164,7 @@ def get_dataset_profile(df: pd.DataFrame, filepath: str) -> dict:
     return profile
 
 
-def show_info(df: pd.DataFrame, col_types: dict):
+def showInfo(df: pd.DataFrame, colTypes: dict):
     """
     Print a detailed df.info()-style table showing every column,
     its dtype, non-null count, % missing, nunique, and detected semantic type.
@@ -172,7 +187,7 @@ def show_info(df: pd.DataFrame, col_types: dict):
 
     icons = {
         "numeric": "🔢", "categorical": "🏷️ ", "datetime": "📅",
-        "text": "📝", "id": "🔑", "unknown": "❓",
+        "text": "📝", "id": "🔑", "index": "🔢❌", "unknown": "❓",
     }
 
     for i, col in enumerate(df.columns):
@@ -181,7 +196,7 @@ def show_info(df: pd.DataFrame, col_types: dict):
         miss_pct  = missing / n * 100 if n else 0
         nunique   = df[col].nunique(dropna=True)
         dtype     = str(df[col].dtype)
-        sem_type  = col_types.get(col, "unknown")
+        sem_type  = colTypes.get(col, "unknown")
         icon      = icons.get(sem_type, "•")
         miss_str  = f"{miss_pct:.1f}%" if missing > 0 else "—"
 
@@ -191,7 +206,7 @@ def show_info(df: pd.DataFrame, col_types: dict):
     print("═" * 80)
 
 
-def suggest_target(df: pd.DataFrame, col_types: dict) -> str | None:
+def suggestTarget(df: pd.DataFrame, colTypes: dict) -> Optional[str]:
     """
     Heuristically suggest the most likely target column based on:
     - Column name keywords (amount, price, total, sales, revenue, profit,
@@ -210,8 +225,8 @@ def suggest_target(df: pd.DataFrame, col_types: dict) -> str | None:
     ]
     candidates = []
     for col in df.columns:
-        sem = col_types.get(col, "unknown")
-        if sem == "id":
+        sem = colTypes.get(col, "unknown")
+        if sem in ("id", "index"):
             continue
         col_lower = col.lower().replace(" ", "_")
         for kw in keywords:
@@ -227,19 +242,19 @@ def suggest_target(df: pd.DataFrame, col_types: dict) -> str | None:
     return candidates[0][1]
 
 
-def prompt_target(df: pd.DataFrame, col_types: dict,
-                  suggested: str | None) -> str | None:
+def promptTarget(df: pd.DataFrame, colTypes: dict,
+                  suggested: Optional[str]) -> Optional[str]:
     """
     Interactively ask the user to confirm or choose the target column.
     Shows a numbered list of usable columns (non-ID, non-datetime).
     """
     usable = [(i, col) for i, col in enumerate(df.columns)
-              if col_types.get(col, "unknown") not in ("id", "datetime", "text")]
+              if colTypes.get(col, "unknown") not in ("id", "index", "datetime", "text")]
 
     print("\n🎯  SELECT TARGET COLUMN")
     print("─" * 50)
     for idx, col in usable:
-        sem   = col_types.get(col, "?")
+        sem   = colTypes.get(col, "?")
         icon  = {"numeric": "🔢", "categorical": "🏷️ "}.get(sem, "•")
         tag   = "  ← suggested" if col == suggested else ""
         print(f"  [{idx:2d}] {col:<30} {icon} {sem}{tag}")
@@ -274,7 +289,7 @@ def prompt_target(df: pd.DataFrame, col_types: dict,
     return None
 
 
-def print_profile(profile: dict):
+def printProfile(profile: dict):
     """Pretty-print the dataset profile summary (used for memory logging)."""
     print(f"\n  📁 {profile['file']}  |  "
           f"{profile['rows']:,} rows × {profile['columns']} cols  |  "

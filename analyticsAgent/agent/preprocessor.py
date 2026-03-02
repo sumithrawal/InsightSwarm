@@ -1,8 +1,3 @@
-"""
-preprocessor.py — Data Preprocessing Module
-Handles cleaning, encoding, scaling, and time-series feature engineering.
-"""
-
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
@@ -110,11 +105,11 @@ class Preprocessor:
 
     def _drop_id_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         id_cols = [c for c, t in self.column_types.items()
-                   if t == "id" and c in df.columns]
+                   if t in ("id", "index") and c in df.columns]
         if id_cols:
             df = df.drop(columns=id_cols)
             self.dropped_columns.extend(id_cols)
-            print(f"  🗑  Dropped ID columns: {id_cols}")
+            print(f"  🗑  Dropped index/ID columns: {id_cols}")
         return df
 
     def _handle_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
