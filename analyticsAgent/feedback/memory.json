@@ -1,0 +1,11 @@
+{
+  "runs": [
+    {
+      "type": "analyze",
+      "file": "sales.csv",
+      "target": null,
+      "output_dir": "outputs",
+      "generated_at": "2026-03-02T11:18:40.687764"
+    }
+  ]
+}

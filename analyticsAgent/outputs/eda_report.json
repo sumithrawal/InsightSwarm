@@ -1,0 +1,67 @@
+{
+  "summary_stats": {
+    "count": {
+      "index": 9271.0,
+      "Stock": 9235.0
+    },
+    "mean": {
+      "index": 4635.0,
+      "Stock": 26.2465
+    },
+    "std": {
+      "index": 2676.4515,
+      "Stock": 58.4629
+    },
+    "min": {
+      "index": 0.0,
+      "Stock": 0.0
+    },
+    "25%": {
+      "index": 2317.5,
+      "Stock": 3.0
+    },
+    "50%": {
+      "index": 4635.0,
+      "Stock": 8.0
+    },
+    "75%": {
+      "index": 6952.5,
+      "Stock": 31.0
+    },
+    "max": {
+      "index": 9270.0,
+      "Stock": 1234.0
+    },
+    "skewness": {
+      "index": 0.0,
+      "Stock": 8.7426
+    },
+    "kurtosis": {
+      "index": -1.2,
+      "Stock": 117.5088
+    }
+  },
+  "skewed_columns": [
+    "Stock"
+  ],
+  "missing_values": {
+    "SKU Code": 83,
+    "Design No.": 36,
+    "Stock": 36,
+    "Category": 45,
+    "Size": 36,
+    "Color": 45
+  },
+  "top_correlations": {
+    "('index', 'Stock')": 0.0577
+  },
+  "outliers": {
+    "Stock": {
+      "count": 684,
+      "pct": 7.41,
+      "lower_bound": -39.0,
+      "upper_bound": 73.0
+    }
+  },
+  "generated_at": "2026-03-02T11:18:40.687764"
+}
