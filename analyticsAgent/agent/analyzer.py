@@ -1,8 +1,3 @@
-"""
-analyzer.py — Exploratory Data Analysis (EDA) Module
-Auto-generates charts, stats, and insights from any dataset.
-"""
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt

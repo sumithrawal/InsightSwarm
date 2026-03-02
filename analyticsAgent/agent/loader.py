@@ -1,8 +1,4 @@
-"""
-loader.py — Data Ingestion Module
-Handles CSV and XLSX loading with smart type detection.
-"""
-
+import imp
 import pandas as pd
 import numpy as np
 import os
@@ -10,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 
 SUPPORTED_FORMATS = [".csv", ".xlsx", ".xls"]
@@ -152,31 +149,134 @@ def get_dataset_profile(df: pd.DataFrame, filepath: str) -> dict:
     return profile
 
 
-def print_profile(profile: dict):
-    """Pretty-print the dataset profile to the CLI."""
-    print("\n" + "═" * 50)
-    print("📊 DATASET PROFILE")
-    print("═" * 50)
-    print(f"  File         : {profile['file']}")
-    print(f"  Shape        : {profile['rows']:,} rows × {profile['columns']} columns")
-    print(f"  Missing cells: {profile['missing_cells']:,}")
-    print(f"  Duplicate rows: {profile['duplicate_rows']:,}")
-    print(f"  Memory usage : {profile['memory_mb']} MB")
+def show_info(df: pd.DataFrame, col_types: dict):
+    """
+    Print a detailed df.info()-style table showing every column,
+    its dtype, non-null count, % missing, nunique, and detected semantic type.
+    This is always the FIRST thing shown after loading — before any operations.
+    """
+    n = len(df)
+    print("\n" + "═" * 80)
+    print("📋  DATASET INFO")
+    print("═" * 80)
+    print(f"  Rows    : {n:,}")
+    print(f"  Columns : {df.shape[1]}")
+    print(f"  Memory  : {df.memory_usage(deep=True).sum() / 1e6:.2f} MB")
+    print(f"  Duplicates: {df.duplicated().sum():,}")
+    print()
 
-    print("\n  Column Types Detected:")
-    type_groups = {}
-    for col, ctype in profile["column_types"].items():
-        type_groups.setdefault(ctype, []).append(col)
+    # Header
+    print(f"  {'#':<4} {'Column':<30} {'Dtype':<12} {'Non-Null':>9} {'Missing%':>9} "
+          f"{'Unique':>8}  {'Semantic Type':<14}")
+    print("  " + "─" * 76)
 
     icons = {
-        "numeric": "🔢",
-        "categorical": "🏷️ ",
-        "datetime": "📅",
-        "text": "📝",
-        "id": "🔑",
-        "unknown": "❓",
+        "numeric": "🔢", "categorical": "🏷️ ", "datetime": "📅",
+        "text": "📝", "id": "🔑", "unknown": "❓",
     }
-    for ctype, cols in type_groups.items():
-        icon = icons.get(ctype, "•")
-        print(f"    {icon} {ctype.upper()} ({len(cols)}): {', '.join(cols)}")
-    print("═" * 50)
+
+    for i, col in enumerate(df.columns):
+        non_null  = df[col].notna().sum()
+        missing   = n - non_null
+        miss_pct  = missing / n * 100 if n else 0
+        nunique   = df[col].nunique(dropna=True)
+        dtype     = str(df[col].dtype)
+        sem_type  = col_types.get(col, "unknown")
+        icon      = icons.get(sem_type, "•")
+        miss_str  = f"{miss_pct:.1f}%" if missing > 0 else "—"
+
+        print(f"  {i:<4} {col:<30} {dtype:<12} {non_null:>9,} {miss_str:>9} "
+              f"{nunique:>8,}  {icon} {sem_type}")
+
+    print("═" * 80)
+
+
+def suggest_target(df: pd.DataFrame, col_types: dict) -> str | None:
+    """
+    Heuristically suggest the most likely target column based on:
+    - Column name keywords (amount, price, total, sales, revenue, profit,
+      churn, target, label, class, score, quantity, units, sold, output)
+    - It being numeric or low-cardinality categorical
+    - NOT being an ID column
+    Returns the suggested column name, or None if no clear candidate.
+    """
+    keywords = [
+        "target", "label", "class", "output",           # generic ML
+        "sales", "revenue", "profit", "amount",          # money
+        "price", "cost", "total", "income",              # more money
+        "churn", "converted", "fraud", "default",        # classification flags
+        "quantity", "units", "sold", "demand",           # volume
+        "score", "rating", "result", "outcome",          # outcomes
+    ]
+    candidates = []
+    for col in df.columns:
+        sem = col_types.get(col, "unknown")
+        if sem == "id":
+            continue
+        col_lower = col.lower().replace(" ", "_")
+        for kw in keywords:
+            if kw in col_lower:
+                # Prefer numeric, then categorical, skip text/datetime
+                priority = 0 if sem == "numeric" else (1 if sem == "categorical" else 2)
+                candidates.append((priority, col))
+                break
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[0])
+    return candidates[0][1]
+
+
+def prompt_target(df: pd.DataFrame, col_types: dict,
+                  suggested: str | None) -> str | None:
+    """
+    Interactively ask the user to confirm or choose the target column.
+    Shows a numbered list of usable columns (non-ID, non-datetime).
+    """
+    usable = [(i, col) for i, col in enumerate(df.columns)
+              if col_types.get(col, "unknown") not in ("id", "datetime", "text")]
+
+    print("\n🎯  SELECT TARGET COLUMN")
+    print("─" * 50)
+    for idx, col in usable:
+        sem   = col_types.get(col, "?")
+        icon  = {"numeric": "🔢", "categorical": "🏷️ "}.get(sem, "•")
+        tag   = "  ← suggested" if col == suggested else ""
+        print(f"  [{idx:2d}] {col:<30} {icon} {sem}{tag}")
+    print("  [ n] No target / unsupervised analysis")
+    print("─" * 50)
+
+    default_hint = f" (default: '{suggested}')" if suggested else " (default: n)"
+    choice = input(f"  Enter column number or name{default_hint}: ").strip()
+
+    if choice.lower() in ("n", "no", "none", ""):
+        if suggested and choice == "":
+            print(f"  ✅ Using suggested target: '{suggested}'")
+            return suggested
+        print("  ℹ️  No target selected — running unsupervised EDA.")
+        return None
+
+    # Match by number
+    if choice.isdigit():
+        idx = int(choice)
+        if idx < len(df.columns):
+            selected = df.columns[idx]
+            print(f"  ✅ Target set to: '{selected}'")
+            return selected
+
+    # Match by name (case-insensitive)
+    matches = [col for col in df.columns if col.lower() == choice.lower()]
+    if matches:
+        print(f"  ✅ Target set to: '{matches[0]}'")
+        return matches[0]
+
+    print(f"  ⚠️  '{choice}' not found — no target selected.")
+    return None
+
+
+def print_profile(profile: dict):
+    """Pretty-print the dataset profile summary (used for memory logging)."""
+    print(f"\n  📁 {profile['file']}  |  "
+          f"{profile['rows']:,} rows × {profile['columns']} cols  |  "
+          f"{profile['missing_cells']:,} missing cells  |  "
+          f"{profile['memory_mb']} MB")
