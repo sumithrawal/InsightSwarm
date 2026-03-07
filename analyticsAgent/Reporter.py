@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-def _img_to_b64(path: str) -> str:
+def _imgToB64(path: str) -> str:
     """Convert a PNG to base64 for embedding in HTML."""
     try:
         with open(path, "rb") as f:
@@ -21,7 +21,7 @@ def _img_to_b64(path: str) -> str:
         return ""
 
 
-def _load_json(path: str) -> dict:
+def _loadJson(path: str) -> dict:
     try:
         with open(path) as f:
             return json.load(f)
@@ -29,7 +29,7 @@ def _load_json(path: str) -> dict:
         return {}
 
 
-def generate_report(output_dir: str = "outputs",
+def generateReport(output_dir: str = "outputs",
                     model_dir:  str = "models",
                     feedback_dir: str = "feedback",
                     report_path: str = "outputs/report.html") -> str:
@@ -37,16 +37,16 @@ def generate_report(output_dir: str = "outputs",
     Generate a self-contained HTML report from all agent outputs.
     Returns the path to the generated report.
     """
-    # ── Load data ────────────────────────────────────────────────
-    eda_report      = _load_json(os.path.join(output_dir, "eda_report.json"))
-    modeling_report = _load_json(os.path.join(output_dir, "modeling_report.json"))
-    memory_data     = _load_json(os.path.join(feedback_dir, "memory.json"))
-    versions_data   = _load_json(os.path.join(feedback_dir, "model_versions.json"))
-    meta            = _load_json(os.path.join(model_dir, "best_model_meta.json"))
-    feedback_data   = _load_json(os.path.join(feedback_dir, "feedback_log.json"))
+    
+    edaReport      = _loadJson(os.path.join(output_dir, "eda_report.json"))
+    modelingReport = _loadJson(os.path.join(output_dir, "modeling_report.json"))
+    memoryData     = _loadJson(os.path.join(feedback_dir, "memory.json"))
+    versionsData   = _loadJson(os.path.join(feedback_dir, "model_versions.json"))
+    meta            = _loadJson(os.path.join(model_dir, "best_model_meta.json"))
+    feedbackData   = _loadJson(os.path.join(feedback_dir, "feedback_log.json"))
 
-    # ── Load charts ──────────────────────────────────────────────
-    chart_files = [
+    
+    chartFiles = [
         ("missing_values.png",          "Missing Values"),
         ("numeric_distributions.png",   "Numeric Distributions"),
         ("categorical_distributions.png","Categorical Distributions"),
@@ -60,105 +60,105 @@ def generate_report(output_dir: str = "outputs",
         ("improvement_history.png",      "Improvement History"),
     ]
 
-    charts_html = ""
-    for fname, title in chart_files:
+    chartsHtml = ""
+    for fname, title in chartFiles:
         fpath = os.path.join(output_dir, fname)
         if os.path.exists(fpath):
-            b64 = _img_to_b64(fpath)
-            charts_html += f"""
+            b64 = _imgToB64(fpath)
+            chartsHtml += f"""
             <div class="chart-card">
                 <div class="chart-title">{title}</div>
                 <img src="data:image/png;base64,{b64}" alt="{title}" />
             </div>"""
 
-    # ── Build stats tables ────────────────────────────────────────
-    # EDA stats
-    eda_rows = ""
-    summary = eda_report.get("summary_stats", {})
+    
+    
+    edaRows = ""
+    summary = edaReport.get("summary_stats", {})
     if summary:
         cols = list(next(iter(summary.values())).keys()) if summary else []
-        eda_rows = "<tr><th>Metric</th>" + "".join(f"<th>{c}</th>" for c in cols) + "</tr>"
+        edaRows = "<tr><th>Metric</th>" + "".join(f"<th>{c}</th>" for c in cols) + "</tr>"
         for metric, vals in summary.items():
-            eda_rows += "<tr><td>" + metric + "</td>"
+            edaRows += "<tr><td>" + metric + "</td>"
             for c in cols:
                 v = vals.get(c, "")
-                eda_rows += f"<td>{round(v,4) if isinstance(v,float) else v}</td>"
-            eda_rows += "</tr>"
+                edaRows += f"<td>{round(v,4) if isinstance(v,float) else v}</td>"
+            edaRows += "</tr>"
 
-    # Missing values
-    missing_rows = ""
-    for col, cnt in eda_report.get("missing_values", {}).items():
-        pct = round(cnt / max(eda_report.get("summary_stats",{}).get("count",{}).get(col,1),1)*100,1)
+    
+    missingRows = ""
+    for col, cnt in edaReport.get("missing_values", {}).items():
+        pct = round(cnt / max(edaReport.get("summary_stats",{}).get("count",{}).get(col,1),1)*100,1)
         bar = "█" * int(pct * 2)
-        missing_rows += f"<tr><td>{col}</td><td>{cnt}</td><td>{pct}%  {bar}</td></tr>"
+        missingRows += f"<tr><td>{col}</td><td>{cnt}</td><td>{pct}%  {bar}</td></tr>"
 
-    # Outliers
-    outlier_rows = ""
-    for col, info in eda_report.get("outliers", {}).items():
-        outlier_rows += (f"<tr><td>{col}</td><td>{info['count']}</td>"
+    
+    outlierRows = ""
+    for col, info in edaReport.get("outliers", {}).items():
+        outlierRows += (f"<tr><td>{col}</td><td>{info['count']}</td>"
                          f"<td>{info['pct']}%</td>"
                          f"<td>{info['lower_bound']} → {info['upper_bound']}</td></tr>")
 
-    # Model results
-    model_rows = ""
-    best_name = modeling_report.get("best_model", "")
-    for name, info in modeling_report.get("results", {}).items():
-        task    = modeling_report.get("task", "regression")
+    
+    modelRows = ""
+    bestName = modelingReport.get("best_model", "")
+    for name, info in modelingReport.get("results", {}).items():
+        task    = modelingReport.get("task", "regression")
         score   = info.get("test_r2" if task == "regression" else "test_f1", "")
         cv      = info.get("cv_r2"   if task == "regression" else "cv_f1", "")
         aux     = info.get("mae", info.get("accuracy", ""))
-        badge   = " 🏆" if name == best_name else ""
-        bold    = "font-weight:bold; color:#ffd700;" if name == best_name else ""
-        model_rows += (f"<tr style='{bold}'><td>{name}{badge}</td>"
+        badge   = " " if name == bestName else ""
+        bold    = "font-weight:bold; color:#ffd700;" if name == bestName else ""
+        modelRows += (f"<tr style='{bold}'><td>{name}{badge}</td>"
                        f"<td>{cv}</td><td>{score}</td><td>{aux}</td></tr>")
 
-    # Version history
-    version_rows = ""
-    for v in versions_data.get("versions", []):
+    
+    versionRows = ""
+    for v in versionsData.get("versions", []):
         promoted = "✅ Yes" if v.get("promoted", True) else "❌ No"
         score    = round(v.get("score",0), 4)
         prev     = round(v.get("prev_score",0), 4)
         delta    = round(score - prev, 4) if prev else "—"
-        version_rows += (f"<tr><td>{v.get('version_id','')}</td>"
+        versionRows += (f"<tr><td>{v.get('version_id','')}</td>"
                          f"<td>{v.get('model_name','')}</td>"
                          f"<td>{score}</td><td>{prev}</td>"
                          f"<td>{delta}</td><td>{promoted}</td>"
                          f"<td>{v.get('trigger','')}</td>"
                          f"<td>{str(v.get('trained_at',''))[:19]}</td></tr>")
 
-    # Feedback log
-    feedback_rows = ""
-    for fb in feedback_data.get("entries", []):
+    
+    feedbackRows = ""
+    for fb in feedbackData.get("entries", []):
         applied = "✅" if fb.get("applied") else "⏳"
         detail  = str(fb.get("detail", ""))[:60]
-        feedback_rows += (f"<tr><td>{fb.get('id','')}</td>"
+        feedbackRows += (f"<tr><td>{fb.get('id','')}</td>"
                           f"<td>{fb.get('type','')}</td>"
                           f"<td>{detail}</td>"
                           f"<td>{applied}</td>"
                           f"<td>{str(fb.get('created_at',''))[:19]}</td></tr>")
 
-    # Run history
-    run_rows = ""
-    for r in memory_data.get("runs", []):
+    
+    runRows = ""
+    for r in memoryData.get("runs", []):
         ts  = str(r.get("logged_at", r.get("generated_at","?")))[:19]
-        run_rows += (f"<tr><td>{r.get('type','').upper()}</td>"
+        runRows += (f"<tr><td>{r.get('type','').upper()}</td>"
                      f"<td>{r.get('file','')}</td>"
                      f"<td>{r.get('target','—')}</td>"
                      f"<td>{ts}</td></tr>")
 
-    # ── Key Metrics Banner ────────────────────────────────────────
-    task         = modeling_report.get("task", "—")
+    
+    task         = modelingReport.get("task", "—")
     target_col   = meta.get("target_col", "—")
-    best_score   = round(meta.get("score", 0), 4)
-    score_label  = "R²" if task == "regression" else "F1"
-    log_note     = " (log-transformed)" if meta.get("log_target") else ""
-    n_versions   = len(versions_data.get("versions", []))
-    n_feedback   = len(feedback_data.get("entries", []))
-    n_pending    = len([f for f in feedback_data.get("entries",[]) if not f.get("applied")])
-    skewed       = ", ".join(eda_report.get("skewed_columns", []))
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    bestScore   = round(meta.get("score", 0), 4)
+    scoreLabel  = "R²" if task == "regression" else "F1"
+    logNote     = " (log-transformed)" if meta.get("log_target") else ""
+    nVersions   = len(versionsData.get("versions", []))
+    nFeedback   = len(feedbackData.get("entries", []))
+    nPending    = len([f for f in feedbackData.get("entries",[]) if not f.get("applied")])
+    skewed       = ", ".join(edaReport.get("skewed_columns", []))
+    generatedAt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # ── HTML ─────────────────────────────────────────────────────
+    
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -318,7 +318,7 @@ def generate_report(output_dir: str = "outputs",
 <body>
 
 <div class="header">
-  <h1>🤖 <span>Analytics Agent</span> — Full Report</h1>
+  <h1> <span>Analytics Agent</span> — Full Report</h1>
   <p>Generated: {generated_at}</p>
   <span class="badge">Target: {target_col}{log_note}</span>
   <span class="badge">Task: {task.upper()}</span>
@@ -330,7 +330,7 @@ def generate_report(output_dir: str = "outputs",
 
   <!-- ── KEY METRICS ── -->
   <div class="section">
-    <div class="section-title">📊 Key Metrics</div>
+    <div class="section-title"> Key Metrics</div>
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="label">ML Task</div>
@@ -367,18 +367,18 @@ def generate_report(output_dir: str = "outputs",
 
   <!-- ── EDA INSIGHTS ── -->
   <div class="section">
-    <div class="section-title">💡 EDA Insights</div>
+    <div class="section-title"> EDA Insights</div>
     <div class="insights">
-      {"".join(f'<div class="insight-pill"><span class="icon">📐</span><strong>Skewed:</strong> {c}</div>' for c in eda_report.get("skewed_columns",[]))}
-      {"".join(f'<div class="insight-pill"><span class="icon">🩹</span><strong>{c}:</strong> {n} missing</div>' for c,n in list(eda_report.get("missing_values",{}).items())[:4])}
+      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>Skewed:</strong> {c}</div>' for c in eda_report.get("skewed_columns",[]))}
+      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>{c}:</strong> {n} missing</div>' for c,n in list(eda_report.get("missing_values",{}).items())[:4])}
       {"".join(f'<div class="insight-pill"><span class="icon">⚠️</span><strong>{c}:</strong> {i["pct"]}% outliers</div>' for c,i in eda_report.get("outliers",{}).items())}
-      {"".join(f'<div class="insight-pill"><span class="icon">🔗</span><strong>{k}:</strong> {v:+.3f}</div>' for k,v in list(eda_report.get("top_correlations",{}).items())[:3])}
+      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>{k}:</strong> {v:+.3f}</div>' for k,v in list(eda_report.get("top_correlations",{}).items())[:3])}
     </div>
   </div>
 
   <!-- ── CHARTS ── -->
   <div class="section">
-    <div class="section-title">🖼️ Charts</div>
+    <div class="section-title">️ Charts</div>
     <div class="charts-grid">
       {charts_html}
     </div>
@@ -387,7 +387,7 @@ def generate_report(output_dir: str = "outputs",
   <!-- ── SUMMARY STATS ── -->
   {"" if not eda_rows else f'''
   <div class="section">
-    <div class="section-title">📋 Summary Statistics</div>
+    <div class="section-title"> Summary Statistics</div>
     <div class="table-wrap">
       <table><thead>{eda_rows[:eda_rows.index("</tr>")+5]}</thead>
       <tbody>{eda_rows[eda_rows.index("</tr>")+5:]}</tbody></table>
@@ -397,7 +397,7 @@ def generate_report(output_dir: str = "outputs",
   <!-- ── MISSING VALUES ── -->
   {"" if not missing_rows else f'''
   <div class="section">
-    <div class="section-title">🩹 Missing Values</div>
+    <div class="section-title"> Missing Values</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Column</th><th>Count</th><th>% Missing</th></tr></thead>
@@ -421,7 +421,7 @@ def generate_report(output_dir: str = "outputs",
   <!-- ── MODEL RESULTS ── -->
   {"" if not model_rows else f'''
   <div class="section">
-    <div class="section-title">🤖 Model Results</div>
+    <div class="section-title"> Model Results</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Model</th><th>CV Score</th><th>Test Score</th><th>MAE / Accuracy</th></tr></thead>
@@ -433,7 +433,7 @@ def generate_report(output_dir: str = "outputs",
   <!-- ── VERSION HISTORY ── -->
   {"" if not version_rows else f'''
   <div class="section">
-    <div class="section-title">🔁 Model Version History</div>
+    <div class="section-title"> Model Version History</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Version</th><th>Model</th><th>Score</th><th>Prev Score</th><th>Δ</th><th>Promoted</th><th>Trigger</th><th>Trained</th></tr></thead>
@@ -457,7 +457,7 @@ def generate_report(output_dir: str = "outputs",
   <!-- ── RUN HISTORY ── -->
   {"" if not run_rows else f'''
   <div class="section">
-    <div class="section-title">📜 Run History</div>
+    <div class="section-title"> Run History</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Type</th><th>File</th><th>Target</th><th>Timestamp</th></tr></thead>

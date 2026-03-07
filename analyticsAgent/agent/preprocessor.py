@@ -8,40 +8,40 @@ from pathlib import Path
 
 
 class Preprocessor:
-    def __init__(self, column_types: dict):
-        self.column_types = column_types
+    def __init__(self, columnTypes: dict):
+        self.columnTypes = columnTypes
         self.label_encoders = {}
         self.scaler = None
         self.imputers = {}
         self.dropped_columns = []
         self.datetime_source_columns = []
-        self.fit_columns = []   # columns present when fit() was called
+        self.fit_columns = []   
         self._is_fit = False
 
-    # ─────────────────────────────────────────────
-    # PUBLIC API
-    # ─────────────────────────────────────────────
+    
+    
+    
 
-    def fit_transform(self, df: pd.DataFrame, target_col: str = None,
+    def fitTransform(self, df: pd.DataFrame, target_col: str = None,
                       scale: str = "standard") -> pd.DataFrame:
         """
         Fit the preprocessor on training data and return transformed DataFrame.
         scale: 'standard' | 'minmax' | None
         """
-        print("\n🔧 PREPROCESSING")
+        print("\n PREPROCESSING")
         print("─" * 40)
 
         df = df.copy()
-        df = self._drop_id_columns(df)
-        df = self._handle_duplicates(df)
-        df = self._parse_datetimes(df)
-        df = self._engineer_time_features(df)
-        df = self._impute_missing(df, fit=True)
-        df = self._encode_categoricals(df, target_col, fit=True)
-        df = self._drop_high_cardinality_text(df, target_col)
+        df = self._dropIdColumns(df)
+        df = self._handleDuplicates(df)
+        df = self._parseDatetimes(df)
+        df = self._engineerTimeFeatures(df)
+        df = self._imputeMissing(df, fit=True)
+        df = self._encodeCategoricals(df, target_col, fit=True)
+        df = self._dropHighCardinalityText(df, target_col)
 
         if scale:
-            df = self._scale_numerics(df, target_col, method=scale, fit=True)
+            df = self._scaleNumerics(df, target_col, method=scale, fit=True)
 
         self.fit_columns = list(df.columns)
         self._is_fit = True
@@ -55,21 +55,21 @@ class Preprocessor:
             raise RuntimeError("Call fit_transform() before transform().")
 
         df = df.copy()
-        df = self._drop_id_columns(df)
-        df = self._parse_datetimes(df)
-        df = self._engineer_time_features(df)
-        df = self._impute_missing(df, fit=False)
-        df = self._encode_categoricals(df, target_col, fit=False)
-        df = self._drop_high_cardinality_text(df, target_col)
+        df = self._dropIdColumns(df)
+        df = self._parseDatetimes(df)
+        df = self._engineerTimeFeatures(df)
+        df = self._imputeMissing(df, fit=False)
+        df = self._encodeCategoricals(df, target_col, fit=False)
+        df = self._dropHighCardinalityText(df, target_col)
 
         if self.scaler:
-            num_cols = [c for c in df.columns
+            numCols = [c for c in df.columns
                         if pd.api.types.is_numeric_dtype(df[c])
                         and c != target_col and c in self.fit_columns]
-            if num_cols:
-                df[num_cols] = self.scaler.transform(df[num_cols])
+            if numCols:
+                df[numCols] = self.scaler.transform(df[numCols])
 
-        # Align columns to training schema
+        
         for col in self.fit_columns:
             if col not in df.columns:
                 df[col] = 0
@@ -77,10 +77,10 @@ class Preprocessor:
 
         return df
 
-    def save_state(self, path: str):
+    def saveState(self, path: str):
         """Persist encoder mappings to JSON (scalers need joblib separately)."""
         state = {
-            "column_types": self.column_types,
+            "column_types": self.columnTypes,
             "dropped_columns": self.dropped_columns,
             "datetime_source_columns": self.datetime_source_columns,
             "fit_columns": self.fit_columns,
@@ -92,33 +92,33 @@ class Preprocessor:
         }
         with open(path, "w") as f:
             json.dump(state, f, indent=2)
-        print(f"💾 Preprocessor state saved to {path}")
+        print(f" Preprocessor state saved to {path}")
 
-    # ─────────────────────────────────────────────
-    # PRIVATE STEPS
-    # ─────────────────────────────────────────────
+    
+    
+    
 
-    def _drop_id_columns(self, df: pd.DataFrame) -> pd.DataFrame:
-        id_cols = [c for c, t in self.column_types.items()
+    def _dropIdColumns(self, df: pd.DataFrame) -> pd.DataFrame:
+        idCols = [c for c, t in self.columnTypes.items()
                    if t in ("id", "index") and c in df.columns]
-        if id_cols:
-            df = df.drop(columns=id_cols)
-            self.dropped_columns.extend(id_cols)
-            print(f"  🗑  Dropped index/ID columns: {id_cols}")
+        if idCols:
+            df = df.drop(columns=idCols)
+            self.dropped_columns.extend(idCols)
+            print(f"    Dropped index/ID columns: {id_cols}")
         return df
 
-    def _handle_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
-        n_before = len(df)
+    def _handleDuplicates(self, df: pd.DataFrame) -> pd.DataFrame:
+        nBefore = len(df)
         df = df.drop_duplicates()
-        removed = n_before - len(df)
+        removed = nBefore - len(df)
         if removed:
-            print(f"  🧹 Removed {removed:,} duplicate rows")
+            print(f"   Removed {removed:,} duplicate rows")
         return df
 
-    def _parse_datetimes(self, df: pd.DataFrame) -> pd.DataFrame:
-        dt_cols = [c for c, t in self.column_types.items()
+    def _parseDatetimes(self, df: pd.DataFrame) -> pd.DataFrame:
+        dtCols = [c for c, t in self.columnTypes.items()
                    if t == "datetime" and c in df.columns]
-        for col in dt_cols:
+        for col in dtCols:
             try:
                 df[col] = pd.to_datetime(df[col], infer_datetime_format=True,
                                           errors="coerce")
@@ -127,7 +127,7 @@ class Preprocessor:
                 pass
         return df
 
-    def _engineer_time_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _engineerTimeFeatures(self, df: pd.DataFrame) -> pd.DataFrame:
         """Extract year, month, day, dayofweek, quarter from datetime columns."""
         engineered = []
         for col in self.datetime_source_columns:
@@ -144,101 +144,101 @@ class Preprocessor:
 
         if engineered:
             df = df.drop(columns=engineered)
-            print(f"  📅 Engineered time features from: {engineered}")
+            print(f"   Engineered time features from: {engineered}")
 
         return df
 
-    def _impute_missing(self, df: pd.DataFrame, fit: bool) -> pd.DataFrame:
+    def _imputeMissing(self, df: pd.DataFrame, fit: bool) -> pd.DataFrame:
         """Impute: median for numeric, most_frequent for categorical."""
-        num_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])
+        numCols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])
                     and df[c].isnull().any()]
-        cat_cols = [c for c in df.columns if not pd.api.types.is_numeric_dtype(df[c])
+        catCols = [c for c in df.columns if not pd.api.types.is_numeric_dtype(df[c])
                     and df[c].isnull().any()]
 
-        if num_cols:
+        if numCols:
             if fit:
                 self.imputers["numeric"] = SimpleImputer(strategy="median")
-                df[num_cols] = self.imputers["numeric"].fit_transform(df[num_cols])
+                df[numCols] = self.imputers["numeric"].fitTransform(df[numCols])
             else:
-                df[num_cols] = self.imputers["numeric"].transform(df[num_cols])
-            print(f"  🩹 Imputed {len(num_cols)} numeric column(s) with median")
+                df[numCols] = self.imputers["numeric"].transform(df[numCols])
+            print(f"   Imputed {len(num_cols)} numeric column(s) with median")
 
-        if cat_cols:
+        if catCols:
             if fit:
                 self.imputers["categorical"] = SimpleImputer(strategy="most_frequent")
-                df[cat_cols] = self.imputers["categorical"].fit_transform(df[cat_cols])
+                df[catCols] = self.imputers["categorical"].fitTransform(df[catCols])
             else:
-                df[cat_cols] = self.imputers["categorical"].transform(df[cat_cols])
-            print(f"  🩹 Imputed {len(cat_cols)} categorical column(s) with mode")
+                df[catCols] = self.imputers["categorical"].transform(df[catCols])
+            print(f"   Imputed {len(cat_cols)} categorical column(s) with mode")
 
         return df
 
-    def _encode_categoricals(self, df: pd.DataFrame, target_col: str,
+    def _encodeCategoricals(self, df: pd.DataFrame, target_col: str,
                               fit: bool) -> pd.DataFrame:
         """Label-encode low-cardinality categoricals. One-hot for <=10 unique."""
-        cat_cols = [c for c in df.columns
+        catCols = [c for c in df.columns
                     if not pd.api.types.is_numeric_dtype(df[c])
                     and c != target_col]
 
-        onehot_cols = []
-        label_cols  = []
+        onehotCols = []
+        labelCols  = []
 
-        for col in cat_cols:
+        for col in catCols:
             nunique = df[col].nunique()
             if nunique <= 10:
-                onehot_cols.append(col)
+                onehotCols.append(col)
             else:
-                label_cols.append(col)
+                labelCols.append(col)
 
-        # One-hot encoding
-        if onehot_cols:
-            df = pd.get_dummies(df, columns=onehot_cols, drop_first=True,
+        
+        if onehotCols:
+            df = pd.get_dummies(df, columns=onehotCols, drop_first=True,
                                 dtype=int)
-            print(f"  🔠 One-hot encoded: {onehot_cols}")
+            print(f"   One-hot encoded: {onehot_cols}")
 
-        # Label encoding for higher-cardinality categoricals
-        for col in label_cols:
+        
+        for col in labelCols:
             if fit:
                 le = LabelEncoder()
-                df[col] = le.fit_transform(df[col].astype(str))
+                df[col] = le.fitTransform(df[col].astype(str))
                 self.label_encoders[col] = le
             else:
                 le = self.label_encoders.get(col)
                 if le:
-                    # Handle unseen labels gracefully
+                    
                     known = set(le.classes_)
                     df[col] = df[col].astype(str).map(
                         lambda x: x if x in known else le.classes_[0]
                     )
                     df[col] = le.transform(df[col])
-        if label_cols:
-            print(f"  🔡 Label encoded: {label_cols}")
+        if labelCols:
+            print(f"   Label encoded: {label_cols}")
 
         return df
 
-    def _drop_high_cardinality_text(self, df: pd.DataFrame,
+    def _dropHighCardinalityText(self, df: pd.DataFrame,
                                      target_col: str) -> pd.DataFrame:
         """Drop free-text columns (still object dtype after encoding)."""
-        text_cols = [c for c in df.columns
+        textCols = [c for c in df.columns
                      if pd.api.types.is_object_dtype(df[c]) and c != target_col]
-        if text_cols:
-            df = df.drop(columns=text_cols)
+        if textCols:
+            df = df.drop(columns=textCols)
             print(f"Dropped high-cardinality text columns: {text_cols}")
         return df
 
-    def _scale_numerics(self, df: pd.DataFrame, target_col: str,
+    def _scaleNumerics(self, df: pd.DataFrame, target_col: str,
                         method: str, fit: bool) -> pd.DataFrame:
-        num_cols = [c for c in df.columns
+        numCols = [c for c in df.columns
                     if pd.api.types.is_numeric_dtype(df[c]) and c != target_col]
-        if not num_cols:
+        if not numCols:
             return df
 
         if fit:
             self.scaler = (StandardScaler() if method == "standard"
                            else MinMaxScaler())
-            df[num_cols] = self.scaler.fit_transform(df[num_cols])
-            print(f"  📏 Scaled {len(num_cols)} numeric column(s) [{method}]")
+            df[numCols] = self.scaler.fitTransform(df[numCols])
+            print(f"   Scaled {len(num_cols)} numeric column(s) [{method}]")
         else:
-            df[num_cols] = self.scaler.transform(df[num_cols])
+            df[numCols] = self.scaler.transform(df[numCols])
 
         return df
