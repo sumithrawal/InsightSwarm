@@ -1,10 +1,7 @@
 import pandas as pd
-import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 from sklearn.impute import SimpleImputer
 import json
-import os
-from pathlib import Path
 
 
 class Preprocessor:
@@ -104,7 +101,7 @@ class Preprocessor:
         if idCols:
             df = df.drop(columns=idCols)
             self.dropped_columns.extend(idCols)
-            print(f"    Dropped index/ID columns: {id_cols}")
+            print(f"    Dropped index/ID columns: {idCols}")
         return df
 
     def _handleDuplicates(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -161,7 +158,7 @@ class Preprocessor:
                 df[numCols] = self.imputers["numeric"].fitTransform(df[numCols])
             else:
                 df[numCols] = self.imputers["numeric"].transform(df[numCols])
-            print(f"   Imputed {len(num_cols)} numeric column(s) with median")
+            print(f"   Imputed {len(numCols)} numeric column(s) with median")
 
         if catCols:
             if fit:
@@ -169,7 +166,7 @@ class Preprocessor:
                 df[catCols] = self.imputers["categorical"].fitTransform(df[catCols])
             else:
                 df[catCols] = self.imputers["categorical"].transform(df[catCols])
-            print(f"   Imputed {len(cat_cols)} categorical column(s) with mode")
+            print(f"   Imputed {len(catCols)} categorical column(s) with mode")
 
         return df
 
@@ -194,7 +191,7 @@ class Preprocessor:
         if onehotCols:
             df = pd.get_dummies(df, columns=onehotCols, drop_first=True,
                                 dtype=int)
-            print(f"   One-hot encoded: {onehot_cols}")
+            print(f"   One-hot encoded: {onehotCols}")
 
         
         for col in labelCols:
@@ -212,7 +209,7 @@ class Preprocessor:
                     )
                     df[col] = le.transform(df[col])
         if labelCols:
-            print(f"   Label encoded: {label_cols}")
+            print(f"   Label encoded: {labelCols}")
 
         return df
 
@@ -223,7 +220,7 @@ class Preprocessor:
                      if pd.api.types.is_object_dtype(df[c]) and c != target_col]
         if textCols:
             df = df.drop(columns=textCols)
-            print(f"Dropped high-cardinality text columns: {text_cols}")
+            print(f"Dropped high-cardinality text columns: {textCols}")
         return df
 
     def _scaleNumerics(self, df: pd.DataFrame, target_col: str,
@@ -237,7 +234,7 @@ class Preprocessor:
             self.scaler = (StandardScaler() if method == "standard"
                            else MinMaxScaler())
             df[numCols] = self.scaler.fitTransform(df[numCols])
-            print(f"   Scaled {len(num_cols)} numeric column(s) [{method}]")
+            print(f"   Scaled {len(numCols)} numeric column(s) [{method}]")
         else:
             df[numCols] = self.scaler.transform(df[numCols])
 

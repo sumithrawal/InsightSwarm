@@ -99,7 +99,6 @@ def cli():
       Analytics Agent v1.0.0
     Self-improving data analysis system.
     """
-    pass
 
 
 
@@ -250,7 +249,6 @@ def predict(file, model_dir, output):
     """  Score new data using the saved best model."""
     def _run():
         from sklearn.preprocessing import LabelEncoder
-        import numpy as np
         loadFile, detectColumnTypes, _, _, showInfo, *_ = _imports()
         *_, Predictor, Memory, Retrainer, generateReport = _imports()
 
@@ -470,7 +468,7 @@ def history(run_type):
 
         click.echo(
             f"  {_c(str(i+1)+'.',fg='bright_black'):<6}"
-            f"{_c(rtype, fg=type_color, bold=True):<18}"
+            f"{_c(rtype, fg=typeColor, bold=True):<18}"
             f"{fn:<30}  "
             f"target={_c(tgt, fg='cyan'):<20}  "
             f"{_c(ts, fg='bright_black')}"

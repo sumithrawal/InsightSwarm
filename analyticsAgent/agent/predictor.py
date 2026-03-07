@@ -84,7 +84,7 @@ class Predictor:
         XTrain, XTest, yTrain, yTest = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
-        print(f"\n Train: {len(X_train):,} rows  |  Test: {len(X_test):,} rows")
+        print(f"\n Train: {len(XTrain):,} rows  |  Test: {len(XTest):,} rows")
         print(f"   Features: {list(X.columns)}")
 
         self._trainAll(XTrain, XTest, yTrain, yTest)
@@ -144,7 +144,7 @@ class Predictor:
         icon = "" if self.task == "regression" else "️ "
         logNote = " (log-transformed)" if self.log_target else ""
         print(f"\n{icon} Task   : {self.task.upper()}")
-        print(f"   Target : '{self.target_col}'{log_note}")
+        print(f"   Target : '{self.target_col}'{logNote}")
 
     def _getModels(self):
         if self.task == "regression":
@@ -171,7 +171,7 @@ class Predictor:
         auxLabel = "MAE" if self.task == "regression" else "Accuracy"
 
         print(f"\n{'─'*55}")
-        print(f"  {'Model':<26} {'CV '+metric:>9} {'Test '+metric:>10} {aux_label:>11}")
+        print(f"  {'Model':<26} {'CV '+metric:>9} {'Test '+metric:>10} {auxLabel:>11}")
         print(f"{'─'*55}")
 
         for name, model in models.items():
@@ -201,7 +201,7 @@ class Predictor:
                         "accuracy": round(aux, 4), "model": model,
                     }
 
-                print(f"  {name:<26} {cv_m:>9.4f} {ts:>10.4f} {aux:>11.4f}")
+                print(f"  {name:<26} {cvM:>9.4f} {ts:>10.4f} {aux:>11.4f}")
 
             except Exception as e:
                 print(f"  {name:<26} ❌ {e}")
@@ -236,8 +236,8 @@ class Predictor:
         with open(metaPath, "w") as f:
             json.dump(meta, f, indent=2)
 
-        print(f"\n Saved → {model_path}")
-        print(f"   Meta → {meta_path}")
+        print(f"\n Saved → {modelPath}")
+        print(f"   Meta → {metaPath}")
 
     def _plotResults(self, XTest, yTest):
         print("\n Generating performance charts...")

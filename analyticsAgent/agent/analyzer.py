@@ -6,11 +6,9 @@ Auto-generates charts, stats, and insights from any dataset.
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import seaborn as sns
 import os
 import json
-from pathlib import Path
 from datetime import datetime
 
 
@@ -126,7 +124,7 @@ class Analyzer:
         if not numCols:
             return
 
-        print(f"\n Plotting distributions for {len(num_cols)} numeric column(s)...")
+        print(f"\n Plotting distributions for {len(numCols)} numeric column(s)...")
 
         ncols = 3
         nrows = max(1, (len(numCols) + ncols - 1) // ncols)
@@ -169,7 +167,7 @@ class Analyzer:
         if not catCols:
             return
 
-        print(f"\n️  Plotting {len(cat_cols)} categorical column(s)...")
+        print(f"\n️  Plotting {len(catCols)} categorical column(s)...")
 
         ncols = 2
         nrows = max(1, (len(catCols) + 1) // ncols)
@@ -202,11 +200,11 @@ class Analyzer:
         numDf = self.df.drop(columns=dropCols).select_dtypes(include="number")
 
         if numDf.shape[1] < 2:
-            print("\n⚠️  Not enough numeric columns for a correlation heatmap (need ≥ 2).")
+            print("\nNot enough numeric columns for a correlation heatmap (need ≥ 2).")
             self.report["top_correlations"] = {}
             return
 
-        print(f"\n Generating correlation heatmap ({num_df.shape[1]} columns)...")
+        print(f"\n Generating correlation heatmap ({numDf.shape[1]} columns)...")
         corr = numDf.corr()
 
         
@@ -315,7 +313,7 @@ class Analyzer:
         if not dtCols:
             return
 
-        print(f"\n Plotting time series for: {dt_cols}")
+        print(f"\n Plotting time series for: {dtCols}")
         numCols = [c for c in self.df.select_dtypes(include="number").columns
                     if c != self.target_col][:4]  
 
@@ -343,10 +341,10 @@ class Analyzer:
                 ax.set_title(f"{col} over time", fontsize=10)
 
             axes[-1].set_xlabel(dtCol)
-            fig.suptitle(f"Time Series Trends (by {dt_col})",
+            fig.suptitle(f"Time Series Trends (by {dtCol})",
                          fontsize=14, fontweight="bold")
             plt.tight_layout()
-            self._saveFig(f"timeseries_{dt_col}.png")
+            self._saveFig(f"timeseries_{dtCol}.png")
 
     def _outlierSummary(self):
         """Detect outliers using IQR method — excludes index/id columns."""
@@ -367,7 +365,7 @@ class Analyzer:
             nOut = ((s < lower) | (s > upper)).sum()
             pct = nOut / len(s) * 100
             if nOut > 0:
-                print(f"   {col:30s} {n_out:5d} outliers ({pct:.1f}%)")
+                print(f"   {col:30s} {nOut:5d} outliers ({pct:.1f}%)")
                 outlierInfo[col] = {"count": int(nOut), "pct": round(pct, 2),
                                      "lower_bound": round(lower, 4),
                                      "upper_bound": round(upper, 4)}

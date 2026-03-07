@@ -10,14 +10,11 @@ Then compares the new model vs the previous best — keeps whichever wins.
 
 import os
 import json
-import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import joblib
 from datetime import datetime
-from sklearn.preprocessing import LabelEncoder
 from agent.predictor import Predictor
 from agent.memory import Memory
 
@@ -92,7 +89,7 @@ class Retrainer:
             nNew = 0
 
         print(f"\n Final dataset : {df.shape[0]:,} rows "
-              f"(+{n_corrections} corrections, +{n_new} new rows)")
+              f"(+{nCorrections} corrections, +{nNew} new rows)")
 
         
         if featureWeights:
@@ -101,7 +98,7 @@ class Retrainer:
         
         metaPath = os.path.join(self.model_dir, "best_model_meta.json")
         prevScore, scoreKey = self._getChampionScore(metaPath)
-        print(f"\n Current champion score ({score_key}): {prev_score:.4f}")
+        print(f"\n Current champion score ({scoreKey}): {prevScore:.4f}")
 
         
         print(f"\n Retraining on {df.shape[0]:,} rows...")
@@ -115,7 +112,7 @@ class Retrainer:
             return {"promoted": False, "reason": "training failed"}
 
         newScore = results.get(predictor.bestName, {}).get(scoreKey, -999)
-        print(f"\n Challenger score ({score_key}): {new_score:.4f}")
+        print(f"\n Challenger score ({scoreKey}): {newScore:.4f}")
 
         
         outcome = self._evaluateAndPromote(
@@ -193,7 +190,7 @@ class Retrainer:
                         df.at[idx, self.target_col] = val
                         nApplied += 1
 
-        print(f"   ✏️  Applied {n_applied} correction(s) from {len(pending)} feedback entry(ies)")
+        print(f" Applied {nApplied} correction(s) from {len(pending)} feedback entry(ies)")
         return df, nApplied
 
     def _mergeNewData(self, df: pd.DataFrame, files: list):
@@ -267,8 +264,8 @@ class Retrainer:
         threshold   = 0.005   
 
         print(f"\n{'─'*55}")
-        print(f"  Champion  : {prev_score:.4f}")
-        print(f"  Challenger: {new_score:.4f}")
+        print(f"  Champion  : {prevScore:.4f}")
+        print(f"  Challenger: {newScore:.4f}")
         print(f"  Δ Change  : {improvement:+.4f}")
         print(f"{'─'*55}")
 
@@ -293,9 +290,9 @@ class Retrainer:
             shutil.copy(os.path.join(challengerDir, "best_model_meta.json"), champMeta)
 
             print(f"\n PROMOTED! New champion: {predictor.best_name}")
-            print(f"   Improvement: {improvement:+.4f} ({improvement/abs(prev_score)*100:+.1f}%)"
+            print(f"   Improvement: {improvement:+.4f} ({improvement/abs(prevScore)*100:+.1f}%)"
                   if prevScore != 0 else f"   Improvement: {improvement:+.4f}")
-            print(f"   Old model archived → {archive_dir}/model_{ts}.pkl")
+            print(f"   Old model archived → {archiveDir}/model_{ts}.pkl")
             return {"promoted": True, "improvement": improvement,
                     "new_score": newScore, "prev_score": prevScore,
                     "best_model": predictor.bestName}

@@ -8,7 +8,6 @@ import os
 import json
 import hashlib
 from datetime import datetime
-from pathlib import Path
 
 
 MEMORYPath   = "feedback/memory.json"
@@ -165,7 +164,7 @@ class Memory:
             score = v.get('score', '?')
             scoreStr = f"{score:.4f}" if isinstance(score, float) else str(score)
             print(f"    ↳ [{v['version_id']}] {v.get('model_name','?'):<26} "
-                  f"{v.get('score_key','?')}={score_str}  "
+                  f"{v.get('score_key','?')}={scoreStr}  "
                   f"trigger={v.get('trigger','?')}")
 
         if pending:

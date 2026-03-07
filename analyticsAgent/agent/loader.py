@@ -4,10 +4,8 @@ Handles CSV and XLSX loading with smart type detection.
 """
 
 import pandas as pd
-import numpy as np
 import os
 import hashlib
-import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -25,7 +23,7 @@ def loadFile(filepath: str) -> pd.DataFrame:
 
     ext = path.suffix.lower()
     if ext not in SUPPORTEDFormats:
-        raise ValueError(f"Unsupported format '{ext}'. Use: {SUPPORTED_FORMATS}")
+        raise ValueError(f"Unsupported format '{ext}'. Use: {SUPPORTEDFormats}")
 
     print(f"\n Loading file: {path.name}")
 
@@ -198,10 +196,10 @@ def showInfo(df: pd.DataFrame, colTypes: dict):
         dtype     = str(df[col].dtype)
         semType  = colTypes.get(col, "unknown")
         icon      = icons.get(semType, "•")
-        missStr  = f"{miss_pct:.1f}%" if missing > 0 else "—"
+        missStr  = f"{missPct:.1f}%" if missing > 0 else "—"
 
-        print(f"  {i:<4} {col:<30} {dtype:<12} {non_null:>9,} {miss_str:>9} "
-              f"{nunique:>8,}  {icon} {sem_type}")
+        print(f"  {i:<4} {col:<30} {dtype:<12} {nonNull:>9,} {missStr:>9} "
+              f"{nunique:>8,}  {icon} {semType}")
 
     print("═" * 80)
 
@@ -262,7 +260,7 @@ def promptTarget(df: pd.DataFrame, colTypes: dict,
     print("─" * 50)
 
     defaultHint = f" (default: '{suggested}')" if suggested else " (default: n)"
-    choice = input(f"  Enter column number or name{default_hint}: ").strip()
+    choice = input(f"  Enter column number or name{defaultHint}: ").strip()
 
     if choice.lower() in ("n", "no", "none", ""):
         if suggested and choice == "":

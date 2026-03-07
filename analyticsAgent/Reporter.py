@@ -7,9 +7,7 @@ into a single self-contained HTML report file.
 import os
 import json
 import base64
-import glob
 from datetime import datetime
-from pathlib import Path
 
 
 def _imgToB64(path: str) -> str:
@@ -319,11 +317,11 @@ def generateReport(output_dir: str = "outputs",
 
 <div class="header">
   <h1> <span>Analytics Agent</span> — Full Report</h1>
-  <p>Generated: {generated_at}</p>
-  <span class="badge">Target: {target_col}{log_note}</span>
+  <p>Generated: {generatedAt}</p>
+  <span class="badge">Target: {target_col}{logNote}</span>
   <span class="badge">Task: {task.upper()}</span>
-  <span class="badge">Best: {best_name}</span>
-  <span class="badge">{score_label}: {best_score}</span>
+  <span class="badge">Best: {bestName}</span>
+  <span class="badge">{scoreLabel}: {bestScore}</span>
 </div>
 
 <div class="container">
@@ -339,27 +337,27 @@ def generateReport(output_dir: str = "outputs",
       </div>
       <div class="metric-card">
         <div class="label">Best Model</div>
-        <div class="value" style="font-size:16px">{best_name}</div>
+        <div class="value" style="font-size:16px">{bestName}</div>
         <div class="sub">Champion</div>
       </div>
       <div class="metric-card">
-        <div class="label">{score_label} Score</div>
-        <div class="value">{best_score}</div>
+        <div class="label">{scoreLabel} Score</div>
+        <div class="value">{bestScore}</div>
         <div class="sub">Test set</div>
       </div>
       <div class="metric-card">
         <div class="label">Retrain Cycles</div>
-        <div class="value">{n_versions}</div>
+        <div class="value">{nVersions}</div>
         <div class="sub">Model versions</div>
       </div>
       <div class="metric-card">
         <div class="label">Feedback</div>
-        <div class="value">{n_feedback}</div>
-        <div class="sub">{n_pending} pending</div>
+        <div class="value">{nFeedback}</div>
+        <div class="sub">{nPending} pending</div>
       </div>
       <div class="metric-card">
         <div class="label">Skewed Columns</div>
-        <div class="value">{len(eda_report.get("skewed_columns",[]))}</div>
+        <div class="value">{len(edaReport.get("skewed_columns",[]))}</div>
         <div class="sub">{skewed or "None"}</div>
       </div>
     </div>
@@ -369,10 +367,10 @@ def generateReport(output_dir: str = "outputs",
   <div class="section">
     <div class="section-title"> EDA Insights</div>
     <div class="insights">
-      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>Skewed:</strong> {c}</div>' for c in eda_report.get("skewed_columns",[]))}
-      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>{c}:</strong> {n} missing</div>' for c,n in list(eda_report.get("missing_values",{}).items())[:4])}
-      {"".join(f'<div class="insight-pill"><span class="icon">⚠️</span><strong>{c}:</strong> {i["pct"]}% outliers</div>' for c,i in eda_report.get("outliers",{}).items())}
-      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>{k}:</strong> {v:+.3f}</div>' for k,v in list(eda_report.get("top_correlations",{}).items())[:3])}
+      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>Skewed:</strong> {c}</div>' for c in edaReport.get("skewed_columns",[]))}
+      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>{c}:</strong> {n} missing</div>' for c,n in list(edaReport.get("missing_values",{}).items())[:4])}
+      {"".join(f'<div class="insight-pill"><span class="icon">⚠️</span><strong>{c}:</strong> {i["pct"]}% outliers</div>' for c,i in edaReport.get("outliers",{}).items())}
+      {"".join(f'<div class="insight-pill"><span class="icon"></span><strong>{k}:</strong> {v:+.3f}</div>' for k,v in list(edaReport.get("top_correlations",{}).items())[:3])}
     </div>
   </div>
 
@@ -380,88 +378,88 @@ def generateReport(output_dir: str = "outputs",
   <div class="section">
     <div class="section-title">️ Charts</div>
     <div class="charts-grid">
-      {charts_html}
+      {chartsHtml}
     </div>
   </div>
 
   <!-- ── SUMMARY STATS ── -->
-  {"" if not eda_rows else f'''
+  {"" if not edaRows else f'''
   <div class="section">
     <div class="section-title"> Summary Statistics</div>
     <div class="table-wrap">
-      <table><thead>{eda_rows[:eda_rows.index("</tr>")+5]}</thead>
-      <tbody>{eda_rows[eda_rows.index("</tr>")+5:]}</tbody></table>
+      <table><thead>{edaRows[:edaRows.index("</tr>")+5]}</thead>
+      <tbody>{edaRows[edaRows.index("</tr>")+5:]}</tbody></table>
     </div>
   </div>'''}
 
   <!-- ── MISSING VALUES ── -->
-  {"" if not missing_rows else f'''
+  {"" if not missingRows else f'''
   <div class="section">
     <div class="section-title"> Missing Values</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Column</th><th>Count</th><th>% Missing</th></tr></thead>
-        <tbody>{missing_rows}</tbody>
+        <tbody>{missingRows}</tbody>
       </table>
     </div>
   </div>'''}
 
   <!-- ── OUTLIERS ── -->
-  {"" if not outlier_rows else f'''
+  {"" if not outlierRows else f'''
   <div class="section">
     <div class="section-title">⚠️ Outliers (IQR Method)</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Column</th><th>Count</th><th>%</th><th>IQR Bounds</th></tr></thead>
-        <tbody>{outlier_rows}</tbody>
+        <tbody>{outlierRows}</tbody>
       </table>
     </div>
   </div>'''}
 
   <!-- ── MODEL RESULTS ── -->
-  {"" if not model_rows else f'''
+  {"" if not modelRows else f'''
   <div class="section">
     <div class="section-title"> Model Results</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Model</th><th>CV Score</th><th>Test Score</th><th>MAE / Accuracy</th></tr></thead>
-        <tbody>{model_rows}</tbody>
+        <tbody>{modelRows}</tbody>
       </table>
     </div>
   </div>'''}
 
   <!-- ── VERSION HISTORY ── -->
-  {"" if not version_rows else f'''
+  {"" if not versionRows else f'''
   <div class="section">
     <div class="section-title"> Model Version History</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Version</th><th>Model</th><th>Score</th><th>Prev Score</th><th>Δ</th><th>Promoted</th><th>Trigger</th><th>Trained</th></tr></thead>
-        <tbody>{version_rows}</tbody>
+        <tbody>{versionRows}</tbody>
       </table>
     </div>
   </div>'''}
 
   <!-- ── FEEDBACK LOG ── -->
-  {"" if not feedback_rows else f'''
+  {"" if not feedbackRows else f'''
   <div class="section">
     <div class="section-title">✏️ Feedback Log</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>ID</th><th>Type</th><th>Detail</th><th>Applied</th><th>Created</th></tr></thead>
-        <tbody>{feedback_rows}</tbody>
+        <tbody>{feedbackRows}</tbody>
       </table>
     </div>
   </div>'''}
 
   <!-- ── RUN HISTORY ── -->
-  {"" if not run_rows else f'''
+  {"" if not runRows else f'''
   <div class="section">
     <div class="section-title"> Run History</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Type</th><th>File</th><th>Target</th><th>Timestamp</th></tr></thead>
-        <tbody>{run_rows}</tbody>
+        <tbody>{runRows}</tbody>
       </table>
     </div>
   </div>'''}
@@ -470,9 +468,9 @@ def generateReport(output_dir: str = "outputs",
 
 <div class="footer">
   Analytics Agent — Phase 5 Report &nbsp;|&nbsp;
-  Generated {generated_at} &nbsp;|&nbsp;
+  Generated {generatedAt} &nbsp;|&nbsp;
   Target: <strong>{target_col}</strong> &nbsp;|&nbsp;
-  Best Model: <strong>{best_name}</strong> ({score_label}={best_score})
+  Best Model: <strong>{bestName}</strong> ({scoreLabel}={bestScore})
 </div>
 
 </body>
