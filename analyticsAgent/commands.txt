@@ -1,0 +1,11 @@
+python main.py --version                          # Analytics Agent v1.0.0
+python main.py load     --file sales.csv          # Phase 1
+python main.py analyze  --file sales.csv          # Phase 2
+python main.py train    --file sales.csv          # Phase 3
+python main.py predict  --file new.csv            # Phase 3
+python main.py feedback --type correction ...     # Phase 4
+python main.py retrain  --file sales.csv          # Phase 4
+python main.py report                             # Phase 5 ← NEW
+python main.py memory                             # Phase 5 ← NEW
+python main.py history  --type train              # Phase 5 ← NEW
+```

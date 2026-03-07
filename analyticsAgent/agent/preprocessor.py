@@ -8,11 +8,6 @@ from pathlib import Path
 
 
 class Preprocessor:
-    """
-    A stateful preprocessor that remembers its transformations
-    so it can apply the same steps to new/unseen data at inference time.
-    """
-
     def __init__(self, column_types: dict):
         self.column_types = column_types
         self.label_encoders = {}
@@ -228,7 +223,7 @@ class Preprocessor:
                      if pd.api.types.is_object_dtype(df[c]) and c != target_col]
         if text_cols:
             df = df.drop(columns=text_cols)
-            print(f"  ✂️  Dropped high-cardinality text columns: {text_cols}")
+            print(f"Dropped high-cardinality text columns: {text_cols}")
         return df
 
     def _scale_numerics(self, df: pd.DataFrame, target_col: str,
