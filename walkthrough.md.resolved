@@ -1,0 +1,25 @@
+# Walkthrough: CrewAI Integration
+
+The InsightSwarm project now natively supports CrewAI via a new [swarm](file:///c:/Users/Lenovo/Desktop/New%20Project/InsightSwarm/analyticsAgent/main.py#429-445) CLI command, bringing zero-shot autonomous analysis capabilities to your datasets.
+
+## Changes Made
+1. **Dependency Added**: Added `crewai` and `langchain-community` to [requirements.txt](file:///c:/Users/Lenovo/Desktop/New%20Project/InsightSwarm/requirements.txt).
+2. **Tool Wrapping**: Wrapped the existing `loader`, `analyzer`, and `predictor` logic into CrewAI-compatible LangChain tools ([agent/crew_tools.py](file:///c:/Users/Lenovo/Desktop/New%20Project/InsightSwarm/analyticsAgent/agent/crew_tools.py)):
+   - `Data Ingestion Tool`
+   - `EDA Analyzer Tool`
+   - `Model Trainer Tool`
+5. **Orchestrator Implemented**: Directed agents through [agent/crew_orchestrator.py](file:///c:/Users/Lenovo/Desktop/New%20Project/InsightSwarm/analyticsAgent/agent/crew_orchestrator.py) which provisions:
+   - A **Senior Data Analyst Agent**
+   - A **Machine Learning Engineer Agent**
+6. **Main CLI Updated**: Added the [swarm](file:///c:/Users/Lenovo/Desktop/New%20Project/InsightSwarm/analyticsAgent/main.py#429-445) command enabling fully autonomous pipelines.
+
+## Validation Results
+We verified that the newly added dependencies get installed correctly and that the script's entrypoint (`python main.py swarm --help`) executes perfectly without import errors or crashes.
+
+## Usage
+To use the new [swarm](file:///c:/Users/Lenovo/Desktop/New%20Project/InsightSwarm/analyticsAgent/main.py#429-445) command, run it using a natural language prompt and point it to a file. For example:
+
+```bash
+# Note: Ensure that OPENAI_API_KEY is exported in your environment.
+python main.py swarm --file sales.csv --prompt "Analyze my dataset to determine the target variable, then train a predictive model on it."
+```
