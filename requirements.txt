@@ -9,3 +9,5 @@ click>=8.1.0
 tensorflow>=2.13.0
 torch>=2.0.0
 schedule>=1.2.0
+crewai
+langchain-community

@@ -427,6 +427,25 @@ def report(output_dir, model_dir, feedback_dir, report_path):
 
 
 @cli.command()
+@click.option("--file", "-f", required=True, help="Path to CSV or XLSX file")
+@click.option("--prompt", "-p", required=True, help="Natural language instruction for the AI crew")
+def swarm(file, prompt):
+    """Run autonomous CrewAI agents to analyze and model your data."""
+    def _run():
+        from agent.crew_orchestrator import run_crew
+        _header("AGENTIC DATA PIPELINE (CREW AI)")
+        
+        if not os.environ.get("OPENAI_API_KEY"):
+            _warn("Warning: OPENAI_API_KEY environment variable is not set.")
+            _info("CrewAI agents generally require OpenAI by default. Set it with: export OPENAI_API_KEY='your-key'")
+            _info("Continuing execution maybe using local models if configured...")
+            
+        run_crew(file, prompt)
+    _safeRun(_run)
+
+
+
+@cli.command()
 def memory():
     """  Show agent memory — runs, feedback, model versions."""
     _mem().printSummary()
